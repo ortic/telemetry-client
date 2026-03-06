@@ -16,6 +16,7 @@ class TelemetryClient
     protected string $serverName;
     protected array $ignoredExceptions;
     protected bool $enabled;
+    protected array $reportedExceptions = [];
 
     public function __construct(array $config = [])
     {
@@ -40,6 +41,13 @@ class TelemetryClient
         if (!$this->shouldReport($exception)) {
             return false;
         }
+
+        // Deduplicate: skip if this exact exception object was already reported
+        $exceptionId = spl_object_id($exception);
+        if (in_array($exceptionId, $this->reportedExceptions, true)) {
+            return false;
+        }
+        $this->reportedExceptions[] = $exceptionId;
 
         $payload = $this->buildPayload($exception, $extra);
 
