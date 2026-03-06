@@ -146,7 +146,7 @@ class TelemetryClient
     }
 
     /**
-     * Get additional context data about the request.
+     * Get comprehensive context data about the request and environment.
      */
     protected function getContextData(): array
     {
@@ -154,15 +154,84 @@ class TelemetryClient
 
         try {
             if (!app()->runningInConsole()) {
-                $context['method'] = request()->method();
-                $context['ip'] = request()->ip();
+                $request = request();
+
+                // HTTP request info
+                $context['request'] = [
+                    'method' => $request->method(),
+                    'url' => $request->fullUrl(),
+                    'route' => $request->route()?->getName() ?? $request->route()?->getActionName() ?? null,
+                    'ip' => $request->ip(),
+                    'ips' => $request->ips(),
+                ];
+
+                // Request headers (filter out sensitive ones)
+                $sensitiveHeaders = ['authorization', 'cookie', 'x-csrf-token', 'x-xsrf-token'];
+                $headers = [];
+                foreach ($request->headers->all() as $key => $values) {
+                    if (in_array(strtolower($key), $sensitiveHeaders)) {
+                        $headers[$key] = '[REDACTED]';
+                    } else {
+                        $headers[$key] = count($values) === 1 ? $values[0] : $values;
+                    }
+                }
+                $context['headers'] = $headers;
+
+                // Request body (truncated for safety, skip file uploads)
+                if (!$request->isMethod('GET') && !$request->hasFile('file')) {
+                    $body = $request->except(['password', 'password_confirmation', 'token', 'secret', '_token']);
+                    $encoded = json_encode($body, JSON_UNESCAPED_UNICODE);
+                    if ($encoded && strlen($encoded) <= 8192) {
+                        $context['body'] = $body;
+                    } else {
+                        $context['body'] = '[TRUNCATED - ' . strlen($encoded) . ' bytes]';
+                    }
+                }
+
+                // Query parameters
+                if ($request->query()) {
+                    $context['query'] = $request->query();
+                }
+
+                // Client info
+                $context['client'] = [
+                    'user_agent' => $request->userAgent(),
+                    'content_type' => $request->header('Content-Type'),
+                    'accept' => $request->header('Accept'),
+                    'referer' => $request->header('Referer'),
+                    'origin' => $request->header('Origin'),
+                ];
+
+                // Session info (if available)
+                try {
+                    if ($request->hasSession()) {
+                        $context['session_id'] = substr($request->session()->getId(), 0, 8) . '...';
+                    }
+                } catch (Throwable $e) {
+                    // No session available
+                }
+            } else {
+                // Console context
+                $context['console'] = [
+                    'command' => implode(' ', $_SERVER['argv'] ?? []),
+                ];
             }
 
-            // Include authenticated user ID if available
+            // Authenticated user
             if (auth()->check()) {
-                $context['user_id'] = auth()->id();
-                $context['user_email'] = auth()->user()->email ?? null;
+                $context['user'] = [
+                    'id' => auth()->id(),
+                    'email' => auth()->user()->email ?? null,
+                    'name' => auth()->user()->name ?? null,
+                ];
             }
+
+            // Runtime info
+            $context['runtime'] = [
+                'php_version' => PHP_VERSION,
+                'laravel_version' => app()->version(),
+                'memory_usage' => round(memory_get_peak_usage(true) / 1024 / 1024, 1) . ' MB',
+            ];
         } catch (Throwable $e) {
             // Silently ignore context collection failures
         }
