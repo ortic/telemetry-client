@@ -1,25 +1,10 @@
 # Ortic Telemetry Client
 
-A Laravel package that automatically captures and sends error telemetry data to your Ortic telemetry server. Works similarly to Sentry — install, configure two environment variables, and all unhandled exceptions are reported automatically.
+A Laravel package that automatically captures and sends error telemetry data to your Ortic telemetry server. Install, configure two environment variables, and all unhandled exceptions are reported automatically.
 
 ## Installation
 
 ### 1. Add the package via Composer
-
-If the package is hosted in a **private repository** (e.g. Bitbucket/GitHub), add the repository to your project's `composer.json` first:
-
-```json
-{
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "git@bitbucket.org:ortic/telemetry-client.git"
-        }
-    ]
-}
-```
-
-Then install:
 
 ```bash
 composer require ortic/telemetry-client
