@@ -82,4 +82,27 @@ return [
     |
     */
     'timeout' => env('TELEMETRY_TIMEOUT', 5),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Performance Tracing
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, the telemetry client will automatically capture HTTP
+    | request transactions and DB query spans, sending them to the
+    | telemetry server for performance monitoring and N+1 detection.
+    |
+    | This is disabled by default — opt in via TELEMETRY_TRACING_ENABLED=true.
+    |
+    */
+    'tracing' => [
+        'enabled' => env('TELEMETRY_TRACING_ENABLED', false),
+
+        // Fraction of requests to trace (1.0 = all, 0.1 = 10%, etc.)
+        'sample_rate' => env('TELEMETRY_TRACING_SAMPLE_RATE', 1.0),
+
+        // Only send transactions that took longer than this (in ms).
+        // Set to 0 to track all transactions.
+        'min_duration_ms' => env('TELEMETRY_TRACING_MIN_DURATION', 0),
+    ],
 ];

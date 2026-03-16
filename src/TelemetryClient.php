@@ -272,4 +272,37 @@ class TelemetryClient
             return false;
         }
     }
+
+    /**
+     * Send a performance transaction to the telemetry server.
+     */
+    public function sendTransaction(array $payload): bool
+    {
+        if (!$this->enabled || empty($this->dsn) || empty($this->endpoint)) {
+            return false;
+        }
+
+        // Derive transaction endpoint from the configured error ingest endpoint
+        // e.g., https://example.com/api/telemetry/ingest → https://example.com/api/telemetry/ingest/transaction
+        $transactionEndpoint = rtrim($this->endpoint, '/') . '/transaction';
+
+        try {
+            $response = $this->http->post($transactionEndpoint, [
+                'json' => $payload,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->dsn,
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ],
+            ]);
+
+            return $response->getStatusCode() === 201;
+        } catch (GuzzleException $e) {
+            Log::warning('Telemetry: Failed to send transaction: ' . $e->getMessage());
+            return false;
+        } catch (Throwable $e) {
+            Log::warning('Telemetry: Unexpected transaction error: ' . $e->getMessage());
+            return false;
+        }
+    }
 }

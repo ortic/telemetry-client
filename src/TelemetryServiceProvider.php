@@ -3,6 +3,7 @@
 namespace Ortic\TelemetryClient;
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\ServiceProvider;
 use Throwable;
 
@@ -32,6 +33,9 @@ class TelemetryServiceProvider extends ServiceProvider
 
         // Hook into Laravel's exception handler to auto-report exceptions
         $this->registerExceptionReporting();
+
+        // Conditionally register performance tracing middleware
+        $this->registerTracingMiddleware();
     }
 
     /**
@@ -52,4 +56,25 @@ class TelemetryServiceProvider extends ServiceProvider
             // Silently fail — don't break the app if handler setup fails
         }
     }
+
+    /**
+     * Register the tracing middleware when tracing is enabled.
+     */
+    protected function registerTracingMiddleware(): void
+    {
+        if (!$this->app['config']->get('telemetry.tracing.enabled', false)) {
+            return;
+        }
+
+        try {
+            $kernel = $this->app->make(Kernel::class);
+
+            if (method_exists($kernel, 'pushMiddleware')) {
+                $kernel->pushMiddleware(TelemetryTracingMiddleware::class);
+            }
+        } catch (Throwable $e) {
+            // Silently fail — tracing should never break the app
+        }
+    }
 }
+
