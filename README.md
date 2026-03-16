@@ -60,6 +60,15 @@ TELEMETRY_SERVER_NAME=web-01
 
 # HTTP timeout in seconds (default: 5)
 TELEMETRY_TIMEOUT=5
+
+# Enable performance tracing (default: false)
+TELEMETRY_TRACING_ENABLED=true
+
+# Fraction of requests to trace: 1.0 = all, 0.1 = 10% (default: 1.0)
+TELEMETRY_TRACING_SAMPLE_RATE=1.0
+
+# Only send transactions longer than this (in ms, default: 0 = all)
+TELEMETRY_TRACING_MIN_DURATION=0
 ```
 
 ## Manual Reporting
