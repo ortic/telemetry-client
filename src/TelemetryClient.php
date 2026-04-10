@@ -83,7 +83,7 @@ class TelemetryClient
     {
         return [
             'exception_class' => get_class($exception),
-            'message' => $this->truncate($exception->getMessage(), 8000),
+            'message' => $this->truncate($exception->getMessage(), 9000),
             'file' => $exception->getFile(),
             'line' => $exception->getLine(),
             'level' => 'error',
@@ -102,7 +102,7 @@ class TelemetryClient
     /**
      * Truncate a string to a specific length.
      */
-    protected function truncate(?string $string, int $limit = 8000): ?string
+    protected function truncate(?string $string, int $limit = 9000): ?string
     {
         if ($string === null) {
             return null;
