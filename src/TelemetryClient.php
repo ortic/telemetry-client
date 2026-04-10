@@ -83,18 +83,52 @@ class TelemetryClient
     {
         return [
             'exception_class' => get_class($exception),
-            'message' => $exception->getMessage(),
+            'message' => $this->truncate($exception->getMessage(), 8000),
             'file' => $exception->getFile(),
             'line' => $exception->getLine(),
             'level' => 'error',
             'trace' => $this->formatTrace($exception),
             'server_name' => $this->serverName,
             'environment' => $this->environment,
-            'url' => $this->getCurrentUrl(),
-            'user_agent' => $this->getUserAgent(),
-            'extra' => array_merge($this->getContextData(), $extra),
-            'occurred_at' => now()->toIso8601String(),
+            'url' => $this->truncate($this->getCurrentUrl(), 2000),
+            'user_agent' => $this->truncate($this->getUserAgent(), 1000),
+            'extra' => $this->truncateRecursive(array_merge($this->getContextData(), $extra)),
+            'occurred_at' => class_exists(\Illuminate\Support\Carbon::class) 
+                ? \Illuminate\Support\Carbon::now()->toIso8601String() 
+                : date('c'),
         ];
+    }
+
+    /**
+     * Truncate a string to a specific length.
+     */
+    protected function truncate(?string $string, int $limit = 8000): ?string
+    {
+        if ($string === null) {
+            return null;
+        }
+
+        if (strlen($string) <= $limit) {
+            return $string;
+        }
+
+        return substr($string, 0, $limit) . ' [TRUNCATED]';
+    }
+
+    /**
+     * Recursively truncate all strings in an array.
+     */
+    protected function truncateRecursive(array $data, int $limit = 4096): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = $this->truncateRecursive($value, $limit);
+            } elseif (is_string($value)) {
+                $data[$key] = $this->truncate($value, $limit);
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -132,10 +166,13 @@ class TelemetryClient
     protected function getCurrentUrl(): ?string
     {
         try {
-            if (app()->runningInConsole()) {
+            if (function_exists('app') && app()->runningInConsole()) {
                 return 'console://' . implode(' ', $_SERVER['argv'] ?? []);
             }
-            return request()->fullUrl();
+            if (function_exists('request')) {
+                return request()->fullUrl();
+            }
+            return null;
         } catch (Throwable $e) {
             return null;
         }
@@ -147,7 +184,10 @@ class TelemetryClient
     protected function getUserAgent(): ?string
     {
         try {
-            return request()->userAgent();
+            if (function_exists('request')) {
+                return request()->userAgent();
+            }
+            return null;
         } catch (Throwable $e) {
             return null;
         }
@@ -161,7 +201,7 @@ class TelemetryClient
         $context = [];
 
         try {
-            if (!app()->runningInConsole()) {
+            if (function_exists('app') && !app()->runningInConsole()) {
                 $request = request();
 
                 // HTTP request info
@@ -226,7 +266,7 @@ class TelemetryClient
             }
 
             // Authenticated user
-            if (auth()->check()) {
+            if (function_exists('auth') && auth()->check()) {
                 $context['user'] = [
                     'id' => auth()->id(),
                     'email' => auth()->user()->email ?? null,
@@ -237,7 +277,7 @@ class TelemetryClient
             // Runtime info
             $context['runtime'] = [
                 'php_version' => PHP_VERSION,
-                'laravel_version' => app()->version(),
+                'laravel_version' => function_exists('app') ? app()->version() : 'N/A',
                 'memory_usage' => round(memory_get_peak_usage(true) / 1024 / 1024, 1) . ' MB',
             ];
         } catch (Throwable $e) {
@@ -265,10 +305,18 @@ class TelemetryClient
             return $response->getStatusCode() === 201;
         } catch (GuzzleException $e) {
             // Log locally but don't throw — telemetry should never break the app
-            Log::warning('Telemetry: Failed to send error report: ' . $e->getMessage());
+            if (class_exists(\Illuminate\Support\Facades\Log::class) && \Illuminate\Support\Facades\Log::getFacadeRoot()) {
+                \Illuminate\Support\Facades\Log::warning('Telemetry: Failed to send error report: ' . $e->getMessage());
+            } else {
+                error_log('Telemetry: Failed to send error report: ' . $e->getMessage());
+            }
             return false;
         } catch (Throwable $e) {
-            Log::warning('Telemetry: Unexpected error: ' . $e->getMessage());
+            if (class_exists(\Illuminate\Support\Facades\Log::class) && \Illuminate\Support\Facades\Log::getFacadeRoot()) {
+                \Illuminate\Support\Facades\Log::warning('Telemetry: Unexpected error: ' . $e->getMessage());
+            } else {
+                error_log('Telemetry: Unexpected error: ' . $e->getMessage());
+            }
             return false;
         }
     }
@@ -298,10 +346,18 @@ class TelemetryClient
 
             return $response->getStatusCode() === 201;
         } catch (GuzzleException $e) {
-            Log::warning('Telemetry: Failed to send transaction: ' . $e->getMessage());
+            if (class_exists(\Illuminate\Support\Facades\Log::class) && \Illuminate\Support\Facades\Log::getFacadeRoot()) {
+                \Illuminate\Support\Facades\Log::warning('Telemetry: Failed to send transaction: ' . $e->getMessage());
+            } else {
+                error_log('Telemetry: Failed to send transaction: ' . $e->getMessage());
+            }
             return false;
         } catch (Throwable $e) {
-            Log::warning('Telemetry: Unexpected transaction error: ' . $e->getMessage());
+            if (class_exists(\Illuminate\Support\Facades\Log::class) && \Illuminate\Support\Facades\Log::getFacadeRoot()) {
+                \Illuminate\Support\Facades\Log::warning('Telemetry: Unexpected transaction error: ' . $e->getMessage());
+            } else {
+                error_log('Telemetry: Unexpected transaction error: ' . $e->getMessage());
+            }
             return false;
         }
     }
