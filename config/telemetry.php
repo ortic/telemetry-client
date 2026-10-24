@@ -85,6 +85,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Stop Other Reporters
+    |--------------------------------------------------------------------------
+    |
+    | When true, an exception the telemetry server accepted is not passed on to
+    | Laravel's other reporters, so it is not written to the log as well.
+    | An exception that was not sent (telemetry disabled, an ignored class,
+    | server unreachable) is still logged, so nothing gets lost.
+    |
+    | Off by default: exceptions go to telemetry and to the log.
+    |
+    */
+    'stop_other_reporters' => env('TELEMETRY_STOP_OTHER_REPORTERS', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Performance Tracing
     |--------------------------------------------------------------------------
     |

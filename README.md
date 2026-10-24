@@ -61,6 +61,10 @@ TELEMETRY_SERVER_NAME=web-01
 # HTTP timeout in seconds (default: 5)
 TELEMETRY_TIMEOUT=5
 
+# Don't also write exceptions the telemetry server accepted to the log (default: false;
+# exceptions that could not be sent are always logged)
+TELEMETRY_STOP_OTHER_REPORTERS=true
+
 # Enable performance tracing (default: false)
 TELEMETRY_TRACING_ENABLED=true
 
