@@ -48,9 +48,11 @@ class TelemetryServiceProvider extends ServiceProvider
 
             // Laravel 11+ uses reportable() on the handler
             if (method_exists($handler, 'reportable')) {
+                // No ->stop(): the exception still goes on to the other reporters, the log in
+                // particular. (stop() takes no argument, so the former ->stop(false) stopped them.)
                 $handler->reportable(function (Throwable $e) {
                     $this->app->make(TelemetryClient::class)->reportException($e);
-                })->stop(false); // Don't stop other reporters (e.g. log)
+                });
             }
         } catch (Throwable $e) {
             // Silently fail — don't break the app if handler setup fails
